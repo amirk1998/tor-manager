@@ -301,12 +301,20 @@ func (a *App) propagateSize() {
 	if h < 5 {
 		h = 5
 	}
-	for _, v := range []interface{ SetSize(int, int) }{
-		a.dashboard, a.bridges, a.countries, a.logs, a.settings,
-	} {
-		if v != nil {
-			v.SetSize(w, h)
-		}
+	if a.dashboard != nil {
+		a.dashboard.SetSize(w, h)
+	}
+	if a.bridges != nil {
+		a.bridges.SetSize(w, h)
+	}
+	if a.countries != nil {
+		a.countries.SetSize(w, h)
+	}
+	if a.logs != nil {
+		a.logs.SetSize(w, h)
+	}
+	if a.settings != nil {
+		a.settings.SetSize(w, h)
 	}
 }
 
@@ -319,14 +327,29 @@ type sizedModel interface {
 func (a *App) activeView() sizedModel {
 	switch a.activeTab {
 	case TabDashboard:
+		if a.dashboard == nil {
+			return nil
+		}
 		return a.dashboard
 	case TabBridges:
+		if a.bridges == nil {
+			return nil
+		}
 		return a.bridges
 	case TabCountries:
+		if a.countries == nil {
+			return nil
+		}
 		return a.countries
 	case TabLogs:
+		if a.logs == nil {
+			return nil
+		}
 		return a.logs
 	case TabSettings:
+		if a.settings == nil {
+			return nil
+		}
 		return a.settings
 	}
 	return nil
@@ -362,10 +385,26 @@ func (a *App) forwardToActive(msg tea.Msg) []tea.Cmd {
 
 func (a *App) forwardToAll(msg tea.Msg) []tea.Cmd {
 	var cmds []tea.Cmd
-	for _, v := range []sizedModel{a.dashboard, a.bridges, a.countries, a.logs, a.settings} {
-		if v == nil {
-			continue
-		}
+	type namedView struct {
+		m sizedModel
+	}
+	views := []sizedModel{}
+	if a.dashboard != nil {
+		views = append(views, a.dashboard)
+	}
+	if a.bridges != nil {
+		views = append(views, a.bridges)
+	}
+	if a.countries != nil {
+		views = append(views, a.countries)
+	}
+	if a.logs != nil {
+		views = append(views, a.logs)
+	}
+	if a.settings != nil {
+		views = append(views, a.settings)
+	}
+	for _, v := range views {
 		m, cmd := v.Update(msg)
 		a.setViewByModel(m)
 		if cmd != nil {
