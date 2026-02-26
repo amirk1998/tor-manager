@@ -12,15 +12,14 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// CountriesView lets the user pick an exit country (or leave it random).
 type CountriesView struct {
 	width  int
 	height int
 
-	cursor   int
-	selected []string // selected country codes; empty = any
-
-	strict bool // StrictNodes
+	cursor    int
+	scrollOff int
+	selected  []string
+	strict    bool
 
 	toast    string
 	toastErr bool
@@ -34,7 +33,6 @@ type countryEntry struct {
 	Flag string
 }
 
-// countryList is an extended list of countries with flag emojis.
 var countryList = []countryEntry{
 	{"", "Any (Random)", "🌐"},
 	{"US", "United States", "🇺🇸"},
@@ -79,16 +77,17 @@ func (c *CountriesView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			c.toast = "Exit country applied!"
 			c.toastErr = false
 		}
-
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "up", "k":
 			if c.cursor > 0 {
 				c.cursor--
+				c.clampScroll()
 			}
 		case "down", "j":
 			if c.cursor < len(countryList)-1 {
 				c.cursor++
+				c.clampScroll()
 			}
 		case "enter", " ":
 			c.toggleCountry()
@@ -106,98 +105,153 @@ func (c *CountriesView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (c *CountriesView) View() string {
-	if c.width == 0 {
+	if c.width == 0 || c.height == 0 {
 		return ""
 	}
-	w := c.width - 4
-	if w > 78 {
-		w = 78
+
+	// ─── layout constants ───────────────────────────────────────────────
+
+	footerH := 1
+	if c.toast != "" {
+		footerH = 2
 	}
 
-	left := c.renderCountryList(w/2 - 1)
-	right := c.renderSelectionPanel(w/2 - 1)
-	columns := lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", right)
-	actions := c.renderActions(w)
+	actionH := footerH + 1
 
-	return lipgloss.JoinVertical(lipgloss.Left, columns, actions)
+	rightFixedLines := 12
+
+	panelOverhead := 4
+
+	leftFixedLines := 4
+	listRows := c.height - actionH - panelOverhead - leftFixedLines
+	if listRows < 3 {
+		listRows = 3
+	}
+
+	rightContentH := rightFixedLines
+	if rightContentH < listRows+leftFixedLines {
+		rightContentH = listRows + leftFixedLines
+	}
+	_ = rightContentH
+
+	totalW := c.width - 2
+	if totalW > 80 {
+		totalW = 80
+	}
+
+	leftW := totalW * 55 / 100
+	rightW := totalW - leftW - 2
+	if leftW < 24 {
+		leftW = 24
+	}
+	if rightW < 22 {
+		rightW = 22
+	}
+
+	left := c.renderList(leftW, listRows)
+	right := c.renderInfo(rightW)
+	row := lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", right)
+	footer := c.renderActions()
+
+	return lipgloss.JoinVertical(lipgloss.Left, row, footer)
 }
 
-func (c *CountriesView) renderCountryList(w int) string {
-	var rows []string
-	rows = append(rows, common.SectionTitle("Exit Country"))
-	rows = append(rows, common.StyleDim.Render("  Space/enter to toggle"))
-	rows = append(rows, "")
+func (c *CountriesView) renderList(w, visRows int) string {
+	// clamp scrollOff
+	c.clampScrollWithRows(visRows)
 
-	for i, entry := range countryList {
-		cursor := "  "
-		nameStyle := common.StyleRowNormal
-		checkmark := "  "
+	var sb strings.Builder
+	sb.WriteString(common.StyleBold.Render("  Exit Country") + "\n")
+	sb.WriteString(common.StyleDim.Render("  ↑↓ navigate  space/enter select") + "\n")
+	sb.WriteString("\n")
 
+	end := c.scrollOff + visRows
+	if end > len(countryList) {
+		end = len(countryList)
+	}
+
+	for i := c.scrollOff; i < end; i++ {
+		entry := countryList[i]
+
+		cur := "  "
 		if i == c.cursor {
-			cursor = common.StyleCursor.Render(" ▶")
+			cur = common.StyleCursor.Render(" ▶")
+		}
+
+		chk := "  "
+		if c.isSelected(entry.Code) {
+			chk = common.StyleSuccessBold.Render(" ✓")
+		}
+
+		nameStyle := common.StyleRowNormal
+		if i == c.cursor {
 			nameStyle = common.StyleRowSelected
 		}
-		if c.isSelected(entry.Code) {
-			checkmark = common.StyleSuccessBold.Render(" ✓")
+
+		maxName := w - 14
+		if maxName < 8 {
+			maxName = 8
 		}
-
-		flag := entry.Flag
-		name := truncate(entry.Name, w-12)
-
-		row := fmt.Sprintf("%s%s %s %s", cursor, checkmark, flag, nameStyle.Render(name))
-		rows = append(rows, row)
+		name := truncateName(entry.Name, maxName)
+		line := fmt.Sprintf("%s%s %s %s", cur, chk, entry.Flag, nameStyle.Render(name))
+		sb.WriteString(line + "\n")
 	}
 
-	content := strings.Join(rows, "\n")
-	return common.StylePanel.Width(w).Render(content)
+	// scroll indicator — tek satır
+	if len(countryList) > visRows {
+		total := len(countryList) - 1
+		pct := 0
+		if total > 0 {
+			pct = c.cursor * 100 / total
+		}
+		sb.WriteString(common.StyleDim.Render(
+			fmt.Sprintf("  ─── %d/%d  %d%% ───", c.cursor+1, len(countryList), pct),
+		))
+	}
+
+	return common.StylePanel.Width(w).Render(sb.String())
 }
 
-func (c *CountriesView) renderSelectionPanel(w int) string {
-	var rows []string
-	rows = append(rows, common.SectionTitle("Active Filter"))
-	rows = append(rows, "")
+func (c *CountriesView) renderInfo(w int) string {
+	var sb strings.Builder
+
+	sb.WriteString(common.StyleBold.Render("  Active Filter") + "\n\n")
 
 	if len(c.selected) == 0 {
-		rows = append(rows, "  "+common.StyleDim.Render("🌐 Any country (random)"))
-		rows = append(rows, "")
-		rows = append(rows,
-			common.StyleDim.Render("  Tor will choose exit nodes\n  from any available country."),
-		)
+		sb.WriteString("  " + common.StyleDim.Render("🌐 Any (random)") + "\n")
+		sb.WriteString("\n")
+		sb.WriteString(common.StyleDim.Render("  Tor picks exits\n  from any country.") + "\n")
 	} else {
 		for _, code := range c.selected {
-			entry := findCountry(code)
-			rows = append(rows, "  "+
-				common.StyleSuccessBold.Render("✓ ")+
-				entry.Flag+" "+
-				common.StyleAccent.Render(entry.Name),
-			)
+			e := findCountry(code)
+			sb.WriteString(fmt.Sprintf("  %s %s %s\n",
+				common.StyleSuccessBold.Render("✓"),
+				e.Flag,
+				common.StyleAccent.Render(truncateName(e.Name, w-10)),
+			))
 		}
 	}
 
-	rows = append(rows, "")
-	rows = append(rows, common.Divider(w-4))
-	rows = append(rows, "")
+	sb.WriteString("\n")
+	sb.WriteString(common.Divider(w-4) + "\n\n")
 
-	// StrictNodes toggle
-	strictLabel := common.StyleDim.Render("  StrictNodes:")
+	// StrictNodes
 	strictVal := common.StyleError.Render("OFF")
 	if c.strict {
 		strictVal = common.StyleSuccess.Render("ON ")
 	}
-	rows = append(rows, strictLabel+" "+strictVal)
-	rows = append(rows, common.StyleDim.Render("  Toggle with [s]"))
-	rows = append(rows, "")
-	rows = append(rows, common.StyleDim.Render("  StrictNodes ON means Tor will\n  only use nodes from selected\n  country. May reduce anonymity."))
+	sb.WriteString(common.StyleDim.Render("  StrictNodes: ") + strictVal + "\n")
+	sb.WriteString(common.StyleDim.Render("  [s] to toggle") + "\n\n")
+	sb.WriteString(common.StyleDim.Render("  ON = force exit\n  country. Reduces\n  anonymity."))
 
-	content := strings.Join(rows, "\n")
-	return common.StylePanel.Width(w).Render(content)
+	return common.StylePanel.Width(w).Render(sb.String())
 }
 
-func (c *CountriesView) renderActions(w int) string {
+func (c *CountriesView) renderActions() string {
 	hints := strings.Join([]string{
 		common.KeyHint("↑↓", "navigate"),
 		common.KeyHint("enter", "toggle"),
-		common.KeyHint("s", "strict nodes"),
+		common.KeyHint("s", "strict"),
 		common.KeyHint("a", "apply"),
 		common.KeyHint("x", "clear"),
 	}, "  ")
@@ -214,28 +268,44 @@ func (c *CountriesView) renderActions(w int) string {
 	return hints
 }
 
-// ── Logic ─────────────────────────────────────────────────────────────────
+// ─── helpers ────────────────────────────────────────────────────────────
+
+func (c *CountriesView) clampScroll() {
+	vis := c.height - 8
+	if vis < 3 {
+		vis = 3
+	}
+	c.clampScrollWithRows(vis)
+}
+
+func (c *CountriesView) clampScrollWithRows(vis int) {
+	if c.cursor < c.scrollOff {
+		c.scrollOff = c.cursor
+	}
+	if c.cursor >= c.scrollOff+vis {
+		c.scrollOff = c.cursor - vis + 1
+	}
+	if c.scrollOff < 0 {
+		c.scrollOff = 0
+	}
+}
 
 func (c *CountriesView) toggleCountry() {
 	entry := countryList[c.cursor]
-
-	// "Any" clears selection
 	if entry.Code == "" {
 		c.selected = nil
 		c.toast = "Country filter cleared"
 		c.toastErr = false
 		return
 	}
-
 	if c.isSelected(entry.Code) {
-		// Deselect
-		newSel := c.selected[:0]
+		var ns []string
 		for _, code := range c.selected {
 			if code != entry.Code {
-				newSel = append(newSel, code)
+				ns = append(ns, code)
 			}
 		}
-		c.selected = newSel
+		c.selected = ns
 	} else {
 		c.selected = append(c.selected, entry.Code)
 	}
@@ -262,7 +332,18 @@ func findCountry(code string) countryEntry {
 	return countryEntry{Code: code, Name: code, Flag: "🏳️"}
 }
 
-// ── Commands ──────────────────────────────────────────────────────────────
+func truncateName(s string, n int) string {
+	if n <= 0 {
+		return ""
+	}
+	runes := []rune(s)
+	if len(runes) <= n {
+		return s
+	}
+	return string(runes[:n-1]) + "…"
+}
+
+// ─── command ────────────────────────────────────────────────────────────
 
 func (c *CountriesView) doApply() tea.Cmd {
 	ctrl := c.ctrl
@@ -273,11 +354,9 @@ func (c *CountriesView) doApply() tea.Cmd {
 	}
 	selected := c.selected
 	strict := c.strict
-
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-
 		var err error
 		if len(selected) == 0 {
 			err = ctrl.ResetConf(ctx, "ExitNodes")
@@ -285,13 +364,11 @@ func (c *CountriesView) doApply() tea.Cmd {
 				err = ctrl.ResetConf(ctx, "StrictNodes")
 			}
 		} else {
-			// Build {US},{DE} style
 			codes := make([]string, len(selected))
 			for i, code := range selected {
 				codes[i] = "{" + code + "}"
 			}
-			nodes := strings.Join(codes, ",")
-			err = ctrl.SetConf(ctx, "ExitNodes", nodes)
+			err = ctrl.SetConf(ctx, "ExitNodes", strings.Join(codes, ","))
 			if err == nil {
 				strictVal := "0"
 				if strict {

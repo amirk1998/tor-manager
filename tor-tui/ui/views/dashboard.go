@@ -299,7 +299,7 @@ func (d *DashboardView) doCheckIP() tea.Cmd {
 	}
 	d.loading = true
 	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
 		return common.IPCheckResultMsg{Result: checker.CheckIP(ctx)}
 	}

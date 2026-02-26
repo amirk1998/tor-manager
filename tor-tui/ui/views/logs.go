@@ -16,7 +16,7 @@ const maxLogLines = 500
 // LogEntry is a single timestamped log line.
 type LogEntry struct {
 	Time    time.Time
-	Level   string // notice, warn, err
+	Level   string
 	Message string
 }
 
@@ -27,14 +27,13 @@ type LogsView struct {
 
 	entries  []LogEntry
 	viewport viewport.Model
-	follow   bool // auto-scroll to bottom
+	follow   bool
 	filter   string
 }
 
 func NewLogsView() *LogsView {
 	vp := viewport.New(80, 20)
 	vp.Style = lipgloss.NewStyle().Foreground(lipgloss.Color(common.ColorWhite))
-
 	return &LogsView{
 		viewport: vp,
 		follow:   true,
@@ -44,8 +43,13 @@ func NewLogsView() *LogsView {
 func (l *LogsView) SetSize(w, h int) {
 	l.width = w
 	l.height = h
-	l.viewport.Width = w - 6
-	l.viewport.Height = h - 8
+
+	// پنل header: 1 خط محتوا + 2 padding + 2 border = ~5 خط
+	// پنل viewport: 2 padding + 2 border = 4 خط overhead
+	// footer (hints): 1 خط
+	// مجموع overhead: 5 + 4 + 1 = 10 خط
+	l.viewport.Width = w - 6 // border(1)*2 + padding(2)*2 = 6
+	l.viewport.Height = h - 10
 	if l.viewport.Height < 5 {
 		l.viewport.Height = 5
 	}
@@ -112,16 +116,14 @@ func (l *LogsView) View() string {
 		w = 100
 	}
 
-	// Header with stats
 	header := l.renderHeader(w)
 
-	// Viewport
+	// ❌ قبلاً: .Height(l.viewport.Height + 2) — باعث clip شدن و overflow میشد
+	// ✅ الان: بدون Height ثابت — viewport خودش ارتفاع رو تعیین میکنه
 	vpContent := common.StylePanel.
 		Width(w).
-		Height(l.viewport.Height + 2).
 		Render(l.viewport.View())
 
-	// Footer with actions
 	footer := l.renderFooter(w)
 
 	return lipgloss.JoinVertical(lipgloss.Left, header, vpContent, footer)
@@ -129,11 +131,10 @@ func (l *LogsView) View() string {
 
 func (l *LogsView) renderHeader(w int) string {
 	count := common.StyleDim.Render(fmt.Sprintf("%d lines", len(l.entries)))
-	followStatus := ""
+
+	followStatus := common.StyleDim.Render(" ○ paused")
 	if l.follow {
 		followStatus = common.StyleSuccess.Render(" ● FOLLOW")
-	} else {
-		followStatus = common.StyleDim.Render(" ○ paused")
 	}
 
 	scrollPct := ""
@@ -145,7 +146,6 @@ func (l *LogsView) renderHeader(w int) string {
 	title := common.SectionTitle("Tor Daemon Logs")
 	right := count + followStatus + scrollPct
 
-	// Right-align the right section
 	titleW := lipgloss.Width(title)
 	rightW := lipgloss.Width(right)
 	gap := w - titleW - rightW - 4
@@ -159,21 +159,17 @@ func (l *LogsView) renderHeader(w int) string {
 }
 
 func (l *LogsView) renderFooter(w int) string {
-	hints := strings.Join([]string{
+	return strings.Join([]string{
 		common.KeyHint("↑↓", "scroll"),
 		common.KeyHint("pgup/dn", "page"),
 		common.KeyHint("g/G", "top/bottom"),
-		common.KeyHint("f", "toggle follow"),
+		common.KeyHint("f", "follow"),
 		common.KeyHint("c", "clear"),
 	}, "  ")
-	return hints
 }
 
-// ── Logic ─────────────────────────────────────────────────────────────────
-
 func (l *LogsView) appendLine(raw string) {
-	entry := parseLogLine(raw)
-	l.addEntry(entry)
+	l.addEntry(parseLogLine(raw))
 }
 
 func (l *LogsView) addEntry(entry LogEntry) {
@@ -213,12 +209,9 @@ func (l *LogsView) formatEntry(e LogEntry) string {
 		levelStr = common.StyleDim.Render("[info]  ")
 	}
 
-	msg := colorizeLogMessage(e.Message)
-
-	return fmt.Sprintf("%s %s %s", ts, levelStr, msg)
+	return fmt.Sprintf("%s %s %s", ts, levelStr, colorizeLogMessage(e.Message))
 }
 
-// colorizeLogMessage applies contextual colors to common log patterns.
 func colorizeLogMessage(msg string) string {
 	lower := strings.ToLower(msg)
 	switch {
@@ -239,16 +232,8 @@ func colorizeLogMessage(msg string) string {
 	}
 }
 
-// parseLogLine parses a Tor log line like:
-// "Nov 01 12:00:00.000 [notice] Bootstrapped 25%: Connecting"
 func parseLogLine(raw string) LogEntry {
-	entry := LogEntry{
-		Time:    time.Now(),
-		Level:   "notice",
-		Message: raw,
-	}
-
-	// Try to extract level: "[notice]", "[warn]", "[err]"
+	entry := LogEntry{Time: time.Now(), Level: "notice", Message: raw}
 	if start := strings.Index(raw, "["); start >= 0 {
 		if end := strings.Index(raw[start:], "]"); end >= 0 {
 			entry.Level = raw[start+1 : start+end]

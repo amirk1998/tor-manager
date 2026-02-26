@@ -104,6 +104,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.ctrl, a.checker = msg.ctrl, msg.checker
 			a.initViews()
 			cmds = append(cmds, a.initViewCmds()...)
+			cmds = append(cmds, a.doBootstrapCheck())
 		}
 	case common.BootstrapEventMsg:
 		cmds = append(cmds, a.forwardToAll(msg)...)
@@ -174,8 +175,20 @@ func (a *App) View() string {
 	if a.showHelp {
 		return a.helpView()
 	}
-	return lipgloss.JoinVertical(lipgloss.Left,
-		a.renderHeader(), a.renderTabs(), a.renderContent(), a.renderFooter())
+
+	header := a.renderHeader()
+	tabs := a.renderTabs()
+	footer := a.renderFooter()
+
+	usedH := lipgloss.Height(header) + lipgloss.Height(tabs) + lipgloss.Height(footer)
+	contentH := a.height - usedH
+	if contentH < 1 {
+		contentH = 1
+	}
+
+	content := a.renderContent(contentH)
+
+	return lipgloss.JoinVertical(lipgloss.Left, header, tabs, content, footer)
 }
 
 func (a *App) bootingView() string {
@@ -215,16 +228,26 @@ func (a *App) renderTabs() string {
 	return StyleTabBar.Width(a.width).Render(strings.Join(tabs, ""))
 }
 
-func (a *App) renderContent() string {
+func (a *App) renderContent(avail int) string {
 	v := a.activeView()
 	if v == nil {
-		return ""
+		return strings.Repeat("\n", avail-1)
 	}
+
 	content := v.View()
-	lines := strings.Count(content, "\n") + 1
-	avail := a.height - 5
-	if lines < avail {
-		content += strings.Repeat("\n", avail-lines)
+	actual := lipgloss.Height(content)
+
+	if actual > avail {
+		// ✅ Clip — محتوای اضافه رو قطع میکنیم تا header/footer جابجا نشه
+		lines := strings.Split(content, "\n")
+		if len(lines) > avail {
+			lines = lines[:avail]
+		}
+		return strings.Join(lines, "\n")
+	}
+	if actual < avail {
+		// padding پایین برای پر کردن فضا
+		content += strings.Repeat("\n", avail-actual)
 	}
 	return content
 }
@@ -297,24 +320,24 @@ func (a *App) initViewCmds() []tea.Cmd {
 }
 
 func (a *App) propagateSize() {
-	w, h := a.width, a.height-5
-	if h < 5 {
-		h = 5
+	contentH := a.height - 4
+	if contentH < 5 {
+		contentH = 5
 	}
 	if a.dashboard != nil {
-		a.dashboard.SetSize(w, h)
+		a.dashboard.SetSize(a.width, contentH)
 	}
 	if a.bridges != nil {
-		a.bridges.SetSize(w, h)
+		a.bridges.SetSize(a.width, contentH)
 	}
 	if a.countries != nil {
-		a.countries.SetSize(w, h)
+		a.countries.SetSize(a.width, contentH)
 	}
 	if a.logs != nil {
-		a.logs.SetSize(w, h)
+		a.logs.SetSize(a.width, contentH)
 	}
 	if a.settings != nil {
-		a.settings.SetSize(w, h)
+		a.settings.SetSize(a.width, contentH)
 	}
 }
 
@@ -438,6 +461,46 @@ func (a *App) doConnect() tea.Cmd {
 		}
 		return controllerBundle{ctrl: ctrl, checker: checker}
 	}
+}
+
+// doBootstrapCheck fetches the current bootstrap status from a running Tor daemon
+// and emits a BootstrapEventMsg so views update their connected state immediately.
+func (a *App) doBootstrapCheck() tea.Cmd {
+	ctrl := a.ctrl
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		done, statusStr, err := ctrl.IsBootstrapped(ctx)
+		if err != nil {
+			return nil // بی‌صدا fail میشه — IP check بعداً وضعیت رو آپدیت میکنه
+		}
+
+		progress := parseStatusProgress(statusStr)
+		if done {
+			progress = 100
+		}
+
+		// همچنین Tor version رو بگیر
+		version, _ := ctrl.GetVersion(ctx)
+		_ = version // در مرحله بعد از طریق toast نمایش میدیم
+
+		return common.BootstrapEventMsg{
+			Event: tor.BootstrapEvent{Progress: progress},
+		}
+	}
+}
+
+// parseStatusProgress extracts PROGRESS=N from a Tor bootstrap status string.
+func parseStatusProgress(status string) int {
+	const tag = "PROGRESS="
+	idx := strings.Index(status, tag)
+	if idx < 0 {
+		return 0
+	}
+	var n int
+	fmt.Sscanf(status[idx+len(tag):], "%d", &n)
+	return n
 }
 
 func (a *App) showToast(msg string, isErr bool) {
