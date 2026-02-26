@@ -9,6 +9,7 @@ import (
 	"github.com/amirk1998/tor-manager/core/config"
 	"github.com/amirk1998/tor-manager/core/proxy"
 	"github.com/amirk1998/tor-manager/core/tor"
+	"github.com/amirk1998/tor-manager/tor-tui/ui/common"
 	"github.com/amirk1998/tor-manager/tor-tui/ui/views"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
@@ -82,7 +83,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		a.width, a.height = msg.Width, msg.Height
 		a.propagateSize()
-	case TickMsg:
+	case common.TickMsg:
 		cmds = append(cmds, tickCmd(time.Duration(a.cfg.AutoRefreshSecs)*time.Second))
 		if !a.toastExpiry.IsZero() && time.Now().After(a.toastExpiry) {
 			a.toast = ""
@@ -104,17 +105,17 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.initViews()
 			cmds = append(cmds, a.initViewCmds()...)
 		}
-	case BootstrapEventMsg:
+	case common.BootstrapEventMsg:
 		cmds = append(cmds, a.forwardToAll(msg)...)
-	case LogLineMsg:
+	case common.LogLineMsg:
 		if a.logs != nil {
 			m, cmd := a.logs.Update(msg)
 			a.logs = m.(*views.LogsView)
 			cmds = append(cmds, cmd)
 		}
-	case ClipboardMsg:
+	case common.ClipboardMsg:
 		a.showToast("Copied: "+msg.Text, false)
-	case ToastMsg:
+	case common.ToastMsg:
 		a.showToast(msg.Message, msg.IsError)
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
@@ -406,7 +407,7 @@ func (a *App) showToast(msg string, isErr bool) {
 }
 
 func tickCmd(d time.Duration) tea.Cmd {
-	return tea.Tick(d, func(t time.Time) tea.Msg { return TickMsg(t) })
+	return tea.Tick(d, func(t time.Time) tea.Msg { return common.TickMsg(t) })
 }
 
 func renderLogo() string {

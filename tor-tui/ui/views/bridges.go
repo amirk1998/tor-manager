@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/amirk1998/tor-manager/core/tor"
-	"github.com/amirk1998/tor-manager/tor-tui/ui"
+	"github.com/amirk1998/tor-manager/tor-tui/ui/common"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -63,7 +63,7 @@ func NewBridgesView(ctrl *tor.Controller) *BridgesView {
 
 	sp := spinner.New()
 	sp.Spinner = spinner.MiniDot
-	sp.Style = ui.StylePrimary
+	sp.Style = common.StylePrimary
 
 	return &BridgesView{
 		ctrl:            ctrl,
@@ -92,7 +92,7 @@ func (b *BridgesView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		b.spinner, cmd = b.spinner.Update(msg)
 		cmds = append(cmds, cmd)
 
-	case ui.BridgesFetchedMsg:
+	case common.BridgesFetchedMsg:
 		b.fetching = false
 		if msg.Err != nil {
 			b.toast = "BridgeDB error: " + msg.Err.Error()
@@ -103,7 +103,7 @@ func (b *BridgesView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			b.toastErr = false
 		}
 
-	case ui.BridgeAppliedMsg:
+	case common.BridgeAppliedMsg:
 		if msg.Err != nil {
 			b.toast = "Apply failed: " + msg.Err.Error()
 			b.toastErr = true
@@ -210,60 +210,60 @@ func (b *BridgesView) renderTransportSelector(w int) string {
 		}
 
 		if tt == b.activeTransport {
-			tabs = append(tabs, ui.StyleTabActive.Render(" "+name+" "))
+			tabs = append(tabs, common.StyleTabActive.Render(" "+name+" "))
 		} else {
-			tabs = append(tabs, ui.StyleTabInactive.Render(" "+name+" "))
+			tabs = append(tabs, common.StyleTabInactive.Render(" "+name+" "))
 		}
 	}
 
-	tabRow := strings.Join(tabs, ui.StyleDim.Render("│"))
+	tabRow := strings.Join(tabs, common.StyleDim.Render("│"))
 
 	meta := tor.Transports[b.activeTransport]
-	desc := ui.StyleDim.Render(meta.Description)
+	desc := common.StyleDim.Render(meta.Description)
 
 	badges := ""
 	if b.activeTransport != tor.TransportDirect {
-		badges = "  " + ui.CensorshipBadge(meta.CensorshipResistance) +
-			"  " + ui.SpeedBadge(meta.SpeedImpact)
+		badges = "  " + common.CensorshipBadge(meta.CensorshipResistance) +
+			"  " + common.SpeedBadge(meta.SpeedImpact)
 	}
 
-	hint := ui.StyleDim.Render("  ← → to switch transport")
+	hint := common.StyleDim.Render("  ← → to switch transport")
 
 	content := tabRow + "\n" + desc + badges + "\n" + hint
-	return ui.StylePanel.Width(w).Render(content)
+	return common.StylePanel.Width(w).Render(content)
 }
 
 func (b *BridgesView) renderBridgeList(w int) string {
 	bridges := b.currentBuiltIns()
 	if len(bridges) == 0 && b.activeTransport == tor.TransportDirect {
-		content := ui.SectionTitle("Built-in Bridges") + "\n\n" +
-			ui.StyleDim.Render("  Direct connection — no bridge in use.\n  Your IP is visible to your ISP.\n")
-		return ui.StylePanel.Width(w).Render(content)
+		content := common.SectionTitle("Built-in Bridges") + "\n\n" +
+			common.StyleDim.Render("  Direct connection — no bridge in use.\n  Your IP is visible to your ISP.\n")
+		return common.StylePanel.Width(w).Render(content)
 	}
 
 	var rows []string
-	rows = append(rows, ui.SectionTitle(fmt.Sprintf("Built-in Bridges (%d)", len(bridges))))
+	rows = append(rows, common.SectionTitle(fmt.Sprintf("Built-in Bridges (%d)", len(bridges))))
 	rows = append(rows, "")
 
 	colW := w - 10
 	header := fmt.Sprintf("  %s  %-*s  %s",
-		ui.StyleTableHeader.Render("   "),
+		common.StyleTableHeader.Render("   "),
 		colW,
-		ui.StyleTableHeader.Render("Bridge Address"),
-		ui.StyleTableHeader.Render("Fingerprint"),
+		common.StyleTableHeader.Render("Bridge Address"),
+		common.StyleTableHeader.Render("Fingerprint"),
 	)
 	rows = append(rows, header)
-	rows = append(rows, "  "+ui.Divider(w-6))
+	rows = append(rows, "  "+common.Divider(w-6))
 
 	for i, br := range bridges {
 		cursor := "  "
-		rowStyle := ui.StyleRowNormal
+		rowStyle := common.StyleRowNormal
 		if i == b.cursor {
-			cursor = ui.StyleCursor.Render(" ▶")
-			rowStyle = ui.StyleRowSelected
+			cursor = common.StyleCursor.Render(" ▶")
+			rowStyle = common.StyleRowSelected
 		}
 		if i == b.selected {
-			cursor = ui.StyleSuccessBold.Render(" ✓")
+			cursor = common.StyleSuccessBold.Render(" ✓")
 		}
 
 		// Display truncated address + partial fingerprint
@@ -274,63 +274,63 @@ func (b *BridgesView) renderBridgeList(w int) string {
 		}
 
 		addr = truncate(addr, colW)
-		row := fmt.Sprintf("%s %-*s  %s", cursor, colW, addr, ui.StyleDim.Render(fp))
+		row := fmt.Sprintf("%s %-*s  %s", cursor, colW, addr, common.StyleDim.Render(fp))
 		rows = append(rows, rowStyle.Render(row))
 	}
 
 	// Custom bridges section
 	if len(b.customBridges) > 0 {
 		rows = append(rows, "")
-		rows = append(rows, ui.SectionTitle(fmt.Sprintf("Custom Bridges (%d)", len(b.customBridges))))
-		rows = append(rows, "  "+ui.Divider(w-6))
+		rows = append(rows, common.SectionTitle(fmt.Sprintf("Custom Bridges (%d)", len(b.customBridges))))
+		rows = append(rows, "  "+common.Divider(w-6))
 		for _, br := range b.customBridges {
-			rows = append(rows, ui.StyleAccent.Render("  + ")+ui.StyleDim.Render(truncate(br.String(), w-8)))
+			rows = append(rows, common.StyleAccent.Render("  + ")+common.StyleDim.Render(truncate(br.String(), w-8)))
 		}
 	}
 
 	content := strings.Join(rows, "\n")
-	return ui.StylePanel.Width(w).Render(content)
+	return common.StylePanel.Width(w).Render(content)
 }
 
 func (b *BridgesView) renderCustomInput(w int) string {
-	label := ui.StyleInputLabel.Render("Paste a bridge line:")
+	label := common.StyleInputLabel.Render("Paste a bridge line:")
 	input := b.customInput.View()
 
 	errLine := ""
 	if b.customError != "" {
-		errLine = "\n" + ui.StyleError.Render("  ✗ "+b.customError)
+		errLine = "\n" + common.StyleError.Render("  ✗ "+b.customError)
 	}
 
-	hint := ui.StyleDim.Render("\n  [enter] add   [esc] cancel")
+	hint := common.StyleDim.Render("\n  [enter] add   [esc] cancel")
 
 	content := label + "\n\n  " + input + errLine + hint
-	return ui.StylePanelActive.Width(w).Render(content)
+	return common.StylePanelActive.Width(w).Render(content)
 }
 
 func (b *BridgesView) renderFetchedBridges(w int) string {
 	var content string
-	title := ui.SectionTitle("BridgeDB — Fresh Bridges")
+	title := common.SectionTitle("BridgeDB — Fresh Bridges")
 
 	if b.fetching {
 		content = title + "\n\n  " + b.spinner.View() + " " +
-			ui.StyleDim.Render("Contacting bridges.torproject.org...")
+			common.StyleDim.Render("Contacting bridges.torproject.org...")
 	} else if len(b.fetchedBridges) == 0 {
 		content = title + "\n\n  " +
-			ui.StyleDim.Render("Press [f] to request fresh bridges for the selected transport.")
+			common.StyleDim.Render("Press [f] to request fresh bridges for the selected transport.")
 	} else {
 		var rows []string
 		rows = append(rows, title)
 		rows = append(rows, "")
 		for _, br := range b.fetchedBridges {
-			rows = append(rows, ui.StyleAccent.Render("  + ")+
-				ui.StyleDim.Render(truncate(br.String(), w-8)))
+			rows = append(rows, common.StyleAccent.Render("  + ")+
+				common.StyleDim.Render(truncate(br.String(), w-8)))
 		}
 		rows = append(rows, "")
-		rows = append(rows, ui.StyleDim.Render("  Press [a] to apply these bridges."))
+		rows = append(rows, common.StyleDim.Render("  Press [a] to apply these bridges."))
 		content = strings.Join(rows, "\n")
 	}
 
-	return ui.StylePanel.Width(w).Render(content)
+	return common.StylePanel.Width(w).Render(content)
 }
 
 func (b *BridgesView) renderActions(w int) string {
@@ -338,24 +338,24 @@ func (b *BridgesView) renderActions(w int) string {
 
 	if b.mode == modeBridgeList {
 		hints = []string{
-			ui.KeyHint("↑↓", "navigate"),
-			ui.KeyHint("←→", "transport"),
-			ui.KeyHint("enter", "select"),
-			ui.KeyHint("u", "add custom"),
-			ui.KeyHint("f", "fetch new"),
-			ui.KeyHint("a", "apply"),
-			ui.KeyHint("d", "remove custom"),
-			ui.KeyHint("x", "disable bridges"),
+			common.KeyHint("↑↓", "navigate"),
+			common.KeyHint("←→", "transport"),
+			common.KeyHint("enter", "select"),
+			common.KeyHint("u", "add custom"),
+			common.KeyHint("f", "fetch new"),
+			common.KeyHint("a", "apply"),
+			common.KeyHint("d", "remove custom"),
+			common.KeyHint("x", "disable bridges"),
 		}
 	}
 
 	line := strings.Join(hints, "  ")
 
 	if b.toast != "" {
-		toastStyle := ui.StyleSuccess
+		toastStyle := common.StyleSuccess
 		prefix := "✓ "
 		if b.toastErr {
-			toastStyle = ui.StyleError
+			toastStyle = common.StyleError
 			prefix = "✗ "
 		}
 		return line + "\n" + toastStyle.Render(prefix+b.toast)
@@ -493,7 +493,7 @@ func (b *BridgesView) doFetchBridges() tea.Cmd {
 			SocksPort: 9050,
 			Count:     3,
 		})
-		return ui.BridgesFetchedMsg{Bridges: bridges, Err: err}
+		return common.BridgesFetchedMsg{Bridges: bridges, Err: err}
 	}
 }
 
@@ -501,7 +501,7 @@ func (b *BridgesView) doApplyBridge() tea.Cmd {
 	ctrl := b.ctrl
 	if ctrl == nil || !ctrl.IsConnected() {
 		return func() tea.Msg {
-			return ui.BridgeAppliedMsg{Err: fmt.Errorf("not connected to control port")}
+			return common.BridgeAppliedMsg{Err: fmt.Errorf("not connected to control port")}
 		}
 	}
 	cfg := b.buildBridgeConfig()
@@ -509,6 +509,6 @@ func (b *BridgesView) doApplyBridge() tea.Cmd {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 		err := cfg.Apply(ctx, ctrl)
-		return ui.BridgeAppliedMsg{Err: err}
+		return common.BridgeAppliedMsg{Err: err}
 	}
 }

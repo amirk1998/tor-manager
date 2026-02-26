@@ -26,18 +26,18 @@ const (
 type AuthMethod int
 
 const (
-	AuthNull        AuthMethod = iota // No authentication (dev only)
-	AuthPassword                      // HashedControlPassword
-	AuthCookie                        // CookieAuthentication (reads from file)
-	AuthSafeCookie                    // SafeCookie (HMAC-based, most secure)
+	AuthNull       AuthMethod = iota // No authentication (dev only)
+	AuthPassword                     // HashedControlPassword
+	AuthCookie                       // CookieAuthentication (reads from file)
+	AuthSafeCookie                   // SafeCookie (HMAC-based, most secure)
 )
 
 // ControllerConfig holds options for creating a Controller.
 type ControllerConfig struct {
-	Addr        string        // default: 127.0.0.1:9051
+	Addr        string // default: 127.0.0.1:9051
 	AuthMethod  AuthMethod
-	Password    string        // used with AuthPassword
-	CookiePath  string        // used with AuthCookie / AuthSafeCookie
+	Password    string // used with AuthPassword
+	CookiePath  string // used with AuthCookie / AuthSafeCookie
 	DialTimeout time.Duration
 	ReadTimeout time.Duration
 }
@@ -55,12 +55,12 @@ func DefaultControllerConfig() ControllerConfig {
 // Controller manages a persistent connection to the Tor control port.
 // It is safe to call from multiple goroutines.
 type Controller struct {
-	cfg         ControllerConfig
-	conn        net.Conn
-	reader      *bufio.Reader
-	mu          sync.Mutex
-	lastNewNym  time.Time
-	connected   bool
+	cfg        ControllerConfig
+	conn       net.Conn
+	reader     *bufio.Reader
+	mu         sync.Mutex
+	lastNewNym time.Time
+	connected  bool
 }
 
 // NewController dials and authenticates to the Tor control port.
@@ -116,7 +116,7 @@ func (c *Controller) authNull() error {
 	if err := c.sendRaw("AUTHENTICATE\r\n"); err != nil {
 		return err
 	}
-	_, err := c.readResponse()
+	_, _, err := c.readResponse()
 	return err
 }
 

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/amirk1998/tor-manager/core/tor"
-	"github.com/amirk1998/tor-manager/tor-tui/ui"
+	"github.com/amirk1998/tor-manager/tor-tui/ui/common"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -71,7 +71,7 @@ func (c *CountriesView) Init() tea.Cmd { return nil }
 
 func (c *CountriesView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case ui.ExitCountryAppliedMsg:
+	case common.ExitCountryAppliedMsg:
 		if msg.Err != nil {
 			c.toast = "Apply failed: " + msg.Err.Error()
 			c.toastErr = true
@@ -124,21 +124,21 @@ func (c *CountriesView) View() string {
 
 func (c *CountriesView) renderCountryList(w int) string {
 	var rows []string
-	rows = append(rows, ui.SectionTitle("Exit Country"))
-	rows = append(rows, ui.StyleDim.Render("  Space/enter to toggle"))
+	rows = append(rows, common.SectionTitle("Exit Country"))
+	rows = append(rows, common.StyleDim.Render("  Space/enter to toggle"))
 	rows = append(rows, "")
 
 	for i, entry := range countryList {
 		cursor := "  "
-		nameStyle := ui.StyleRowNormal
+		nameStyle := common.StyleRowNormal
 		checkmark := "  "
 
 		if i == c.cursor {
-			cursor = ui.StyleCursor.Render(" ▶")
-			nameStyle = ui.StyleRowSelected
+			cursor = common.StyleCursor.Render(" ▶")
+			nameStyle = common.StyleRowSelected
 		}
 		if c.isSelected(entry.Code) {
-			checkmark = ui.StyleSuccessBold.Render(" ✓")
+			checkmark = common.StyleSuccessBold.Render(" ✓")
 		}
 
 		flag := entry.Flag
@@ -149,64 +149,64 @@ func (c *CountriesView) renderCountryList(w int) string {
 	}
 
 	content := strings.Join(rows, "\n")
-	return ui.StylePanel.Width(w).Render(content)
+	return common.StylePanel.Width(w).Render(content)
 }
 
 func (c *CountriesView) renderSelectionPanel(w int) string {
 	var rows []string
-	rows = append(rows, ui.SectionTitle("Active Filter"))
+	rows = append(rows, common.SectionTitle("Active Filter"))
 	rows = append(rows, "")
 
 	if len(c.selected) == 0 {
-		rows = append(rows, "  "+ui.StyleDim.Render("🌐 Any country (random)"))
+		rows = append(rows, "  "+common.StyleDim.Render("🌐 Any country (random)"))
 		rows = append(rows, "")
 		rows = append(rows,
-			ui.StyleDim.Render("  Tor will choose exit nodes\n  from any available country."),
+			common.StyleDim.Render("  Tor will choose exit nodes\n  from any available country."),
 		)
 	} else {
 		for _, code := range c.selected {
 			entry := findCountry(code)
 			rows = append(rows, "  "+
-				ui.StyleSuccessBold.Render("✓ ")+
+				common.StyleSuccessBold.Render("✓ ")+
 				entry.Flag+" "+
-				ui.StyleAccent.Render(entry.Name),
+				common.StyleAccent.Render(entry.Name),
 			)
 		}
 	}
 
 	rows = append(rows, "")
-	rows = append(rows, ui.Divider(w-4))
+	rows = append(rows, common.Divider(w-4))
 	rows = append(rows, "")
 
 	// StrictNodes toggle
-	strictLabel := ui.StyleDim.Render("  StrictNodes:")
-	strictVal := ui.StyleError.Render("OFF")
+	strictLabel := common.StyleDim.Render("  StrictNodes:")
+	strictVal := common.StyleError.Render("OFF")
 	if c.strict {
-		strictVal = ui.StyleSuccess.Render("ON ")
+		strictVal = common.StyleSuccess.Render("ON ")
 	}
 	rows = append(rows, strictLabel+" "+strictVal)
-	rows = append(rows, ui.StyleDim.Render("  Toggle with [s]"))
+	rows = append(rows, common.StyleDim.Render("  Toggle with [s]"))
 	rows = append(rows, "")
-	rows = append(rows, ui.StyleDim.Render("  StrictNodes ON means Tor will\n  only use nodes from selected\n  country. May reduce anonymity."))
+	rows = append(rows, common.StyleDim.Render("  StrictNodes ON means Tor will\n  only use nodes from selected\n  country. May reduce anonymity."))
 
 	content := strings.Join(rows, "\n")
-	return ui.StylePanel.Width(w).Render(content)
+	return common.StylePanel.Width(w).Render(content)
 }
 
 func (c *CountriesView) renderActions(w int) string {
 	hints := strings.Join([]string{
-		ui.KeyHint("↑↓", "navigate"),
-		ui.KeyHint("enter", "toggle"),
-		ui.KeyHint("s", "strict nodes"),
-		ui.KeyHint("a", "apply"),
-		ui.KeyHint("x", "clear"),
+		common.KeyHint("↑↓", "navigate"),
+		common.KeyHint("enter", "toggle"),
+		common.KeyHint("s", "strict nodes"),
+		common.KeyHint("a", "apply"),
+		common.KeyHint("x", "clear"),
 	}, "  ")
 
 	if c.toast != "" {
-		toastStyle := ui.StyleSuccess
+		toastStyle := common.StyleSuccess
 		prefix := "✓ "
 		if c.toastErr {
-			toastStyle = ui.StyleError
+			toastStyle = common.StyleError
 			prefix = "✗ "
 		}
 		return hints + "\n" + toastStyle.Render(prefix+c.toast)
@@ -268,7 +268,7 @@ func (c *CountriesView) doApply() tea.Cmd {
 	ctrl := c.ctrl
 	if ctrl == nil || !ctrl.IsConnected() {
 		return func() tea.Msg {
-			return ui.ExitCountryAppliedMsg{Err: fmt.Errorf("not connected to control port")}
+			return common.ExitCountryAppliedMsg{Err: fmt.Errorf("not connected to control port")}
 		}
 	}
 	selected := c.selected
@@ -300,6 +300,6 @@ func (c *CountriesView) doApply() tea.Cmd {
 				err = ctrl.SetConf(ctx, "StrictNodes", strictVal)
 			}
 		}
-		return ui.ExitCountryAppliedMsg{Err: err}
+		return common.ExitCountryAppliedMsg{Err: err}
 	}
 }

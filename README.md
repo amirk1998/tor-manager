@@ -31,6 +31,8 @@ It gives you real-time visibility into your Tor circuit, lets you switch bridges
 
 It is **not** a VPN. It is **not** a browser extension. It is a first-class management layer that sits on top of your existing Tor installation and exposes its full capability through an ergonomic interface.
 
+> **Latest:** Version 0.1.1 released — Bug fixes for circular import and controller authentication. See [CHANGELOG](CHANGELOG.md) for details.
+
 ---
 
 ## ✨ Feature Highlights
@@ -94,10 +96,11 @@ tor-manager/
 ├── tor-tui/                     ← Terminal UI (Bubble Tea + Lip Gloss)
 │   ├── main.go
 │   └── ui/
+│       ├── common/              ← Shared types (no UI dependencies)
+│       │   ├── messages.go      Tea message types for inter-component communication
+│       │   ├── styles.go        Centralized design system (palette, components, helpers)
+│       │   └── keys.go          All keybindings in one place
 │       ├── app.go               Root model: tab routing, boot screen, help overlay
-│       ├── styles.go            Centralized design system (palette, components)
-│       ├── keys.go              All keybindings in one place
-│       ├── messages.go          Tea message types for inter-component communication
 │       └── views/
 │           ├── dashboard.go     Connection status, exit IP, proxy address
 │           ├── bridges.go       Bridge manager (built-in / custom / BridgeDB)

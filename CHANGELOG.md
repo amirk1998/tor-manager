@@ -20,6 +20,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.1] — 2026-02-26
+
+> Bug fix release for circular import and controller authentication issues.
+
+### Fixed
+
+#### `core` — Bug Fixes
+- **Controller authentication** (`tor/controller.go`)
+  - Fixed `authNull()` function to correctly handle 3-value return from `readResponse()`
+  - Previously only captured 2 values, causing compilation error
+
+#### `tor-tui` — Architecture Refactoring
+- **Fixed circular import** — Resolved import cycle between `ui` and `ui/views` packages
+  - Created new `ui/common` subpackage for shared types
+  - Moved message types (`TickMsg`, `BootstrapEventMsg`, `LogLineMsg`, etc.) to `common/messages.go`
+  - Moved styles and helper functions to `common/styles.go`
+  - Moved key bindings to `common/keys.go`
+  - Updated all view files to import from `ui/common` instead of `ui`
+- **Type compatibility fixes**
+  - Updated `CensorshipBadge()` and `SpeedBadge()` to accept `int` parameters (matching `TransportMeta` struct)
+  - Fixed color constant usage with proper `lipgloss.Color()` wrapper throughout views
+- **Build verification**
+  - All packages now compile without errors
+  - `go vet ./...` passes with no warnings
+
+---
+
 ## [0.1.0] — 2026-02-26
 
 > Initial public release of the tor-manager suite.
@@ -147,5 +174,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/yourname/tor-manager/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/yourname/tor-manager/releases/tag/v0.1.0
+[Unreleased]: https://github.com/amirk1998/tor-manager/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/amirk1998/tor-manager/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/amirk1998/tor-manager/releases/tag/v0.1.0

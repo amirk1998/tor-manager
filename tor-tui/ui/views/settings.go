@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/amirk1998/tor-manager/core/config"
-	"github.com/amirk1998/tor-manager/tor-tui/ui"
+	"github.com/amirk1998/tor-manager/tor-tui/ui/common"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -125,7 +125,7 @@ func (s *SettingsView) View() string {
 
 func (s *SettingsView) renderPortsSection(w int) string {
 	rows := []string{
-		ui.SectionTitle("Ports"),
+		common.SectionTitle("Ports"),
 		"",
 		s.renderField(fieldSocksPort, "SOCKS5 Port",
 			"Applications connect here to route traffic through Tor."),
@@ -133,69 +133,69 @@ func (s *SettingsView) renderPortsSection(w int) string {
 		s.renderField(fieldControlPort, "Control Port",
 			"Used internally for bridge/identity management."),
 	}
-	return ui.StylePanel.Width(w).Render(strings.Join(rows, "\n"))
+	return common.StylePanel.Width(w).Render(strings.Join(rows, "\n"))
 }
 
 func (s *SettingsView) renderAuthSection(w int) string {
-	authMode := "Cookie  " + ui.StyleSuccess.Render("(recommended)")
+	authMode := "Cookie  " + common.StyleSuccess.Render("(recommended)")
 	if s.cfg.ControlAuth == "password" {
 		authMode = "Password"
 	}
 
 	rows := []string{
-		ui.SectionTitle("Control Port Authentication"),
+		common.SectionTitle("Control Port Authentication"),
 		"",
-		fmt.Sprintf("  %-22s %s", "Current Mode", ui.StyleAccent.Render(authMode)),
+		fmt.Sprintf("  %-22s %s", "Current Mode", common.StyleAccent.Render(authMode)),
 		"",
 		s.renderField(fieldPassword, "Password",
 			"Leave blank to use cookie auth (more secure)."),
 	}
-	return ui.StylePanel.Width(w).Render(strings.Join(rows, "\n"))
+	return common.StylePanel.Width(w).Render(strings.Join(rows, "\n"))
 }
 
 func (s *SettingsView) renderPrefsSection(w int) string {
 	rows := []string{
-		ui.SectionTitle("Preferences"),
+		common.SectionTitle("Preferences"),
 		"",
 		s.renderField(fieldAutoRefresh, "Auto-refresh (sec)",
 			"How often the IP check runs automatically."),
 	}
-	return ui.StylePanel.Width(w).Render(strings.Join(rows, "\n"))
+	return common.StylePanel.Width(w).Render(strings.Join(rows, "\n"))
 }
 
 func (s *SettingsView) renderField(f settingField, label, desc string) string {
 	isFocused := s.focus == f
-	inputStyle := ui.StyleInputBlurred
+	inputStyle := common.StyleInputBlurred
 	if isFocused {
-		inputStyle = ui.StyleInputFocused
+		inputStyle = common.StyleInputFocused
 	}
 
-	labelStr := fmt.Sprintf("  %-22s", ui.StyleInputLabel.Render(label))
+	labelStr := fmt.Sprintf("  %-22s", common.StyleInputLabel.Render(label))
 	inputStr := inputStyle.Render(s.inputs[f].View())
-	descStr := "  " + ui.StyleDim.Render(desc)
+	descStr := "  " + common.StyleDim.Render(desc)
 
 	return labelStr + inputStr + "\n" + descStr
 }
 
 func (s *SettingsView) renderActions(w int) string {
 	hints := strings.Join([]string{
-		ui.KeyHint("tab/↓", "next field"),
-		ui.KeyHint("ctrl+s", "save"),
-		ui.KeyHint("esc", "revert"),
+		common.KeyHint("tab/↓", "next field"),
+		common.KeyHint("ctrl+s", "save"),
+		common.KeyHint("esc", "revert"),
 	}, "  ")
 
 	dirtyStr := ""
 	if s.dirty {
-		dirtyStr = "  " + ui.StyleWarning.Render("● unsaved changes")
+		dirtyStr = "  " + common.StyleWarning.Render("● unsaved changes")
 	}
 
 	footer := hints + dirtyStr
 
 	if s.toast != "" {
-		style := ui.StyleSuccess
+		style := common.StyleSuccess
 		prefix := "✓ "
 		if s.toastErr {
-			style = ui.StyleError
+			style = common.StyleError
 			prefix = "✗ "
 		}
 		return footer + "\n" + style.Render(prefix+s.toast)

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/amirk1998/tor-manager/tor-tui/ui"
+	"github.com/amirk1998/tor-manager/tor-tui/ui/common"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -33,7 +33,7 @@ type LogsView struct {
 
 func NewLogsView() *LogsView {
 	vp := viewport.New(80, 20)
-	vp.Style = lipgloss.NewStyle().Foreground(ui.ColorWhite)
+	vp.Style = lipgloss.NewStyle().Foreground(lipgloss.Color(common.ColorWhite))
 
 	return &LogsView{
 		viewport: vp,
@@ -58,10 +58,10 @@ func (l *LogsView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
-	case ui.LogLineMsg:
+	case common.LogLineMsg:
 		l.appendLine(msg.Line)
 
-	case ui.BootstrapEventMsg:
+	case common.BootstrapEventMsg:
 		entry := LogEntry{
 			Time:    time.Now(),
 			Level:   "notice",
@@ -116,7 +116,7 @@ func (l *LogsView) View() string {
 	header := l.renderHeader(w)
 
 	// Viewport
-	vpContent := ui.StylePanel.
+	vpContent := common.StylePanel.
 		Width(w).
 		Height(l.viewport.Height + 2).
 		Render(l.viewport.View())
@@ -128,21 +128,21 @@ func (l *LogsView) View() string {
 }
 
 func (l *LogsView) renderHeader(w int) string {
-	count := ui.StyleDim.Render(fmt.Sprintf("%d lines", len(l.entries)))
+	count := common.StyleDim.Render(fmt.Sprintf("%d lines", len(l.entries)))
 	followStatus := ""
 	if l.follow {
-		followStatus = ui.StyleSuccess.Render(" ● FOLLOW")
+		followStatus = common.StyleSuccess.Render(" ● FOLLOW")
 	} else {
-		followStatus = ui.StyleDim.Render(" ○ paused")
+		followStatus = common.StyleDim.Render(" ○ paused")
 	}
 
 	scrollPct := ""
 	if l.viewport.TotalLineCount() > 0 {
 		pct := l.viewport.ScrollPercent() * 100
-		scrollPct = ui.StyleDim.Render(fmt.Sprintf(" %3.0f%%", pct))
+		scrollPct = common.StyleDim.Render(fmt.Sprintf(" %3.0f%%", pct))
 	}
 
-	title := ui.SectionTitle("Tor Daemon Logs")
+	title := common.SectionTitle("Tor Daemon Logs")
 	right := count + followStatus + scrollPct
 
 	// Right-align the right section
@@ -153,18 +153,18 @@ func (l *LogsView) renderHeader(w int) string {
 		gap = 1
 	}
 
-	return ui.StylePanel.Width(w).Render(
+	return common.StylePanel.Width(w).Render(
 		title + strings.Repeat(" ", gap) + right,
 	)
 }
 
 func (l *LogsView) renderFooter(w int) string {
 	hints := strings.Join([]string{
-		ui.KeyHint("↑↓", "scroll"),
-		ui.KeyHint("pgup/dn", "page"),
-		ui.KeyHint("g/G", "top/bottom"),
-		ui.KeyHint("f", "toggle follow"),
-		ui.KeyHint("c", "clear"),
+		common.KeyHint("↑↓", "scroll"),
+		common.KeyHint("pgup/dn", "page"),
+		common.KeyHint("g/G", "top/bottom"),
+		common.KeyHint("f", "toggle follow"),
+		common.KeyHint("c", "clear"),
 	}, "  ")
 	return hints
 }
@@ -197,20 +197,20 @@ func (l *LogsView) rebuildViewport() {
 }
 
 func (l *LogsView) formatEntry(e LogEntry) string {
-	ts := ui.StyleDim.Render(e.Time.Format("15:04:05"))
+	ts := common.StyleDim.Render(e.Time.Format("15:04:05"))
 
 	var levelStr string
 	switch e.Level {
 	case "err", "error":
-		levelStr = ui.StyleErrorBold.Render("[ERR]   ")
+		levelStr = common.StyleErrorBold.Render("[ERR]   ")
 	case "warn", "warning":
-		levelStr = ui.StyleWarningBold.Render("[WARN]  ")
+		levelStr = common.StyleWarningBold.Render("[WARN]  ")
 	case "notice":
-		levelStr = ui.StyleInfo.Render("[notice]")
+		levelStr = common.StyleInfo.Render("[notice]")
 	case "debug":
-		levelStr = ui.StyleDim.Render("[debug] ")
+		levelStr = common.StyleDim.Render("[debug] ")
 	default:
-		levelStr = ui.StyleDim.Render("[info]  ")
+		levelStr = common.StyleDim.Render("[info]  ")
 	}
 
 	msg := colorizeLogMessage(e.Message)
@@ -223,19 +223,19 @@ func colorizeLogMessage(msg string) string {
 	lower := strings.ToLower(msg)
 	switch {
 	case strings.Contains(lower, "bootstrap") && strings.Contains(lower, "100%"):
-		return ui.StyleSuccessBold.Render(msg)
+		return common.StyleSuccessBold.Render(msg)
 	case strings.Contains(lower, "bootstrap"):
-		return ui.StyleWarning.Render(msg)
+		return common.StyleWarning.Render(msg)
 	case strings.Contains(lower, "error") || strings.Contains(lower, "failed"):
-		return ui.StyleError.Render(msg)
+		return common.StyleError.Render(msg)
 	case strings.Contains(lower, "warn"):
-		return ui.StyleWarning.Render(msg)
+		return common.StyleWarning.Render(msg)
 	case strings.Contains(lower, "circuit") && strings.Contains(lower, "built"):
-		return ui.StyleSuccess.Render(msg)
+		return common.StyleSuccess.Render(msg)
 	case strings.Contains(lower, "new identity"):
-		return ui.StyleAccent.Render(msg)
+		return common.StyleAccent.Render(msg)
 	default:
-		return ui.StyleDim.Render(msg)
+		return common.StyleDim.Render(msg)
 	}
 }
 
