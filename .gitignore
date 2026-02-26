@@ -1,0 +1,40 @@
+# ── Go ─────────────────────────────────────────
+*/bin/
+*.exe
+!tor-gui/build/bin/*.exe
+*.test
+*.out
+*.prof
+
+# ── Wails / Frontend ───────────────────────────
+tor-gui/build/bin/
+tor-gui/frontend/dist/
+tor-gui/frontend/node_modules/
+tor-gui/frontend/.svelte-kit/
+
+# ── TUI ────────────────────────────────────────
+tor-tui/bin/
+
+# ── Go module cache ────────────────────────────
+vendor/
+
+# ── IDE ────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── OS ─────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Secrets ────────────────────────────────────
+*.env
+.env.*
+*_secret*
+tor-data/
+control_auth_cookie
+
+# ── Guide ────────────────────────────────────
+Changelog guide.md
