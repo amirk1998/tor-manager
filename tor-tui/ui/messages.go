@@ -3,8 +3,8 @@ package ui
 import (
 	"time"
 
-	"github.com/you/tor-manager/core/proxy"
-	"github.com/you/tor-manager/core/tor"
+	"github.com/amirk1998/tor-manager/core/proxy"
+	"github.com/amirk1998/tor-manager/core/tor"
 )
 
 // TickMsg is sent on a regular interval to trigger IP auto-refresh.

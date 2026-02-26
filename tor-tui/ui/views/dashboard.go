@@ -6,12 +6,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/amirk1998/tor-manager/core/proxy"
+	"github.com/amirk1998/tor-manager/core/tor"
+	"github.com/amirk1998/tor-manager/tor-tui/ui"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/you/tor-manager/core/proxy"
-	"github.com/you/tor-manager/core/tor"
-	"github.com/you/tor-tui/ui"
 )
 
 // DashboardView is the main connection status screen.

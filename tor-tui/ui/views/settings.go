@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/amirk1998/tor-manager/core/config"
+	"github.com/amirk1998/tor-manager/tor-tui/ui"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/you/tor-manager/core/config"
-	"github.com/you/tor-tui/ui"
 )
 
 type settingField int

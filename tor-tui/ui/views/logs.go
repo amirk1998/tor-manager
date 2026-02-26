@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/amirk1998/tor-manager/tor-tui/ui"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/you/tor-tui/ui"
 )
 
 const maxLogLines = 500

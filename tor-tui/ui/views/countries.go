@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/amirk1998/tor-manager/core/tor"
+	"github.com/amirk1998/tor-manager/tor-tui/ui"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/you/tor-manager/core/tor"
-	"github.com/you/tor-tui/ui"
 )
 
 // CountriesView lets the user pick an exit country (or leave it random).

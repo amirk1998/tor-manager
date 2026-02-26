@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/amirk1998/tor-manager/core/config"
+	"github.com/amirk1998/tor-manager/tor-tui/ui"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/you/tor-manager/core/config"
-	"github.com/you/tor-tui/ui"
 )
 
 func main() {

@@ -6,13 +6,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/amirk1998/tor-manager/core/config"
+	"github.com/amirk1998/tor-manager/core/proxy"
+	"github.com/amirk1998/tor-manager/core/tor"
+	"github.com/amirk1998/tor-manager/tor-tui/ui/views"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/you/tor-manager/core/config"
-	"github.com/you/tor-manager/core/proxy"
-	"github.com/you/tor-manager/core/tor"
-	"github.com/you/tor-tui/ui/views"
 )
 
 type Tab int
@@ -27,7 +27,7 @@ const (
 )
 
 var tabLabels = [tabCount]string{"Dashboard", "Bridges", "Countries", "Logs", "Settings"}
-var tabIcons  = [tabCount]string{"◈", "⬡", "◎", "≡", "⚙"}
+var tabIcons = [tabCount]string{"◈", "⬡", "◎", "≡", "⚙"}
 
 type controllerBundle struct {
 	ctrl    *tor.Controller
@@ -117,23 +117,41 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case ToastMsg:
 		a.showToast(msg.Message, msg.IsError)
 	case tea.KeyMsg:
-		if msg.String() == "ctrl+c" { return a, tea.Quit }
-		if msg.String() == "q" && !a.inputFocused() && !a.booting { return a, tea.Quit }
+		if msg.String() == "ctrl+c" {
+			return a, tea.Quit
+		}
+		if msg.String() == "q" && !a.inputFocused() && !a.booting {
+			return a, tea.Quit
+		}
 		if !a.booting && a.bootErr == "" {
 			switch msg.String() {
 			case "?":
 				a.showHelp = !a.showHelp
 				return a, nil
 			case "esc":
-				if a.showHelp { a.showHelp = false; return a, nil }
+				if a.showHelp {
+					a.showHelp = false
+					return a, nil
+				}
 			case "tab":
-				if !a.showHelp { a.activeTab = (a.activeTab + 1) % tabCount; return a, nil }
+				if !a.showHelp {
+					a.activeTab = (a.activeTab + 1) % tabCount
+					return a, nil
+				}
 			case "shift+tab":
-				if !a.showHelp { a.activeTab = (a.activeTab - 1 + tabCount) % tabCount; return a, nil }
+				if !a.showHelp {
+					a.activeTab = (a.activeTab - 1 + tabCount) % tabCount
+					return a, nil
+				}
 			case "1", "2", "3", "4", "5":
-				if !a.showHelp { a.activeTab = Tab(msg.String()[0] - '1'); return a, nil }
+				if !a.showHelp {
+					a.activeTab = Tab(msg.String()[0] - '1')
+					return a, nil
+				}
 			default:
-				if !a.showHelp { cmds = append(cmds, a.forwardToActive(msg)...) }
+				if !a.showHelp {
+					cmds = append(cmds, a.forwardToActive(msg)...)
+				}
 			}
 		}
 	default:
@@ -143,10 +161,18 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (a *App) View() string {
-	if a.width == 0 { return "\n  Loading..." }
-	if a.booting    { return a.bootingView() }
-	if a.bootErr != "" { return a.errorView() }
-	if a.showHelp   { return a.helpView() }
+	if a.width == 0 {
+		return "\n  Loading..."
+	}
+	if a.booting {
+		return a.bootingView()
+	}
+	if a.bootErr != "" {
+		return a.errorView()
+	}
+	if a.showHelp {
+		return a.helpView()
+	}
 	return lipgloss.JoinVertical(lipgloss.Left,
 		a.renderHeader(), a.renderTabs(), a.renderContent(), a.renderFooter())
 }
@@ -167,9 +193,11 @@ func (a *App) errorView() string {
 
 func (a *App) renderHeader() string {
 	logo := StyleLogo.Render("🧅 tor-manager")
-	ver  := StyleDim.Render("v0.1.0")
-	gap  := a.width - lipgloss.Width(logo) - lipgloss.Width(ver) - 4
-	if gap < 1 { gap = 1 }
+	ver := StyleDim.Render("v0.1.0")
+	gap := a.width - lipgloss.Width(logo) - lipgloss.Width(ver) - 4
+	if gap < 1 {
+		gap = 1
+	}
 	return StyleHeaderBar.Width(a.width).Render(logo + strings.Repeat(" ", gap) + ver)
 }
 
@@ -188,11 +216,15 @@ func (a *App) renderTabs() string {
 
 func (a *App) renderContent() string {
 	v := a.activeView()
-	if v == nil { return "" }
+	if v == nil {
+		return ""
+	}
 	content := v.View()
 	lines := strings.Count(content, "\n") + 1
 	avail := a.height - 5
-	if lines < avail { content += strings.Repeat("\n", avail-lines) }
+	if lines < avail {
+		content += strings.Repeat("\n", avail-lines)
+	}
 	return content
 }
 
@@ -200,12 +232,14 @@ func (a *App) renderFooter() string {
 	var line string
 	if a.toast != "" {
 		st := StyleSuccess
-		if a.toastIsErr { st = StyleError }
+		if a.toastIsErr {
+			st = StyleError
+		}
 		line = st.Render(a.toast)
 	} else {
 		line = strings.Join([]string{
 			KeyHint("1-5", "tabs"), KeyHint("tab", "next"),
-			KeyHint("?", "help"),  KeyHint("q", "quit"),
+			KeyHint("?", "help"), KeyHint("q", "quit"),
 		}, "  "+StyleDim.Render("·")+"  ")
 	}
 	return StyleFooter.Width(a.width).Render(line)
@@ -213,13 +247,16 @@ func (a *App) renderFooter() string {
 
 func (a *App) helpView() string {
 	type item struct{ k, d string }
-	secs := []struct{ t string; i []item }{
-		{"Global",    []item{{"1–5 / tab","Switch tabs"},{"q / ctrl+c","Quit"},{"?","Close help"}}},
-		{"Dashboard", []item{{"r","Refresh IP"},{"n","New identity (10s cooldown)"},{"c","Copy proxy"}}},
-		{"Bridges",   []item{{"← →","Change transport"},{"↑ ↓ / enter","Select"},{"u","Custom bridge"},{"f","Fetch from BridgeDB"},{"a","Apply"},{"x","Disable"}}},
-		{"Countries", []item{{"↑ ↓","Navigate"},{"enter","Toggle"},{"s","StrictNodes"},{"a","Apply"},{"x","Clear"}}},
-		{"Logs",      []item{{"↑ ↓","Scroll"},{"g / G","Top/bottom"},{"f","Follow"},{"c","Clear"}}},
-		{"Settings",  []item{{"tab","Next field"},{"ctrl+s","Save"},{"esc","Revert"}}},
+	secs := []struct {
+		t string
+		i []item
+	}{
+		{"Global", []item{{"1–5 / tab", "Switch tabs"}, {"q / ctrl+c", "Quit"}, {"?", "Close help"}}},
+		{"Dashboard", []item{{"r", "Refresh IP"}, {"n", "New identity (10s cooldown)"}, {"c", "Copy proxy"}}},
+		{"Bridges", []item{{"← →", "Change transport"}, {"↑ ↓ / enter", "Select"}, {"u", "Custom bridge"}, {"f", "Fetch from BridgeDB"}, {"a", "Apply"}, {"x", "Disable"}}},
+		{"Countries", []item{{"↑ ↓", "Navigate"}, {"enter", "Toggle"}, {"s", "StrictNodes"}, {"a", "Apply"}, {"x", "Clear"}}},
+		{"Logs", []item{{"↑ ↓", "Scroll"}, {"g / G", "Top/bottom"}, {"f", "Follow"}, {"c", "Clear"}}},
+		{"Settings", []item{{"tab", "Next field"}, {"ctrl+s", "Save"}, {"esc", "Revert"}}},
 	}
 	var sb strings.Builder
 	sb.WriteString(StyleBold.Render("  Keyboard Reference") + "\n\n")
@@ -232,35 +269,43 @@ func (a *App) helpView() string {
 	}
 	sb.WriteString(KeyHint("esc / ?", "close"))
 	w := a.width - 8
-	if w > 60 { w = 60 }
+	if w > 60 {
+		w = 60
+	}
 	panel := StylePanelActive.Width(w).Render(sb.String())
 	return lipgloss.Place(a.width, a.height, lipgloss.Center, lipgloss.Center, panel)
 }
 
 func (a *App) initViews() {
 	a.dashboard = views.NewDashboardView(a.checker, a.ctrl)
-	a.bridges   = views.NewBridgesView(a.ctrl)
+	a.bridges = views.NewBridgesView(a.ctrl)
 	a.countries = views.NewCountriesView(a.ctrl)
-	a.logs      = views.NewLogsView()
-	a.settings  = views.NewSettingsView(a.cfg)
+	a.logs = views.NewLogsView()
+	a.settings = views.NewSettingsView(a.cfg)
 	a.propagateSize()
 }
 
 func (a *App) initViewCmds() []tea.Cmd {
 	var cmds []tea.Cmd
 	for _, v := range []tea.Model{a.dashboard, a.bridges, a.logs} {
-		if v != nil { cmds = append(cmds, v.Init()) }
+		if v != nil {
+			cmds = append(cmds, v.Init())
+		}
 	}
 	return cmds
 }
 
 func (a *App) propagateSize() {
 	w, h := a.width, a.height-5
-	if h < 5 { h = 5 }
+	if h < 5 {
+		h = 5
+	}
 	for _, v := range []interface{ SetSize(int, int) }{
 		a.dashboard, a.bridges, a.countries, a.logs, a.settings,
 	} {
-		if v != nil { v.SetSize(w, h) }
+		if v != nil {
+			v.SetSize(w, h)
+		}
 	}
 }
 
@@ -272,41 +317,59 @@ type sizedModel interface {
 
 func (a *App) activeView() sizedModel {
 	switch a.activeTab {
-	case TabDashboard: return a.dashboard
-	case TabBridges:   return a.bridges
-	case TabCountries: return a.countries
-	case TabLogs:      return a.logs
-	case TabSettings:  return a.settings
+	case TabDashboard:
+		return a.dashboard
+	case TabBridges:
+		return a.bridges
+	case TabCountries:
+		return a.countries
+	case TabLogs:
+		return a.logs
+	case TabSettings:
+		return a.settings
 	}
 	return nil
 }
 
 func (a *App) setViewByModel(m tea.Model) {
 	switch v := m.(type) {
-	case *views.DashboardView: a.dashboard = v
-	case *views.BridgesView:   a.bridges = v
-	case *views.CountriesView: a.countries = v
-	case *views.LogsView:      a.logs = v
-	case *views.SettingsView:  a.settings = v
+	case *views.DashboardView:
+		a.dashboard = v
+	case *views.BridgesView:
+		a.bridges = v
+	case *views.CountriesView:
+		a.countries = v
+	case *views.LogsView:
+		a.logs = v
+	case *views.SettingsView:
+		a.settings = v
 	}
 }
 
 func (a *App) forwardToActive(msg tea.Msg) []tea.Cmd {
 	v := a.activeView()
-	if v == nil { return nil }
+	if v == nil {
+		return nil
+	}
 	m, cmd := v.Update(msg)
 	a.setViewByModel(m)
-	if cmd != nil { return []tea.Cmd{cmd} }
+	if cmd != nil {
+		return []tea.Cmd{cmd}
+	}
 	return nil
 }
 
 func (a *App) forwardToAll(msg tea.Msg) []tea.Cmd {
 	var cmds []tea.Cmd
 	for _, v := range []sizedModel{a.dashboard, a.bridges, a.countries, a.logs, a.settings} {
-		if v == nil { continue }
+		if v == nil {
+			continue
+		}
 		m, cmd := v.Update(msg)
 		a.setViewByModel(m)
-		if cmd != nil { cmds = append(cmds, cmd) }
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
 	}
 	return cmds
 }
@@ -320,14 +383,19 @@ func (a *App) doConnect() tea.Cmd {
 		cc.Addr = fmt.Sprintf("127.0.0.1:%d", cfg.ControlPort)
 		if cfg.ControlAuth == "password" {
 			cc.AuthMethod = tor.AuthPassword
-			cc.Password   = cfg.Password
+			cc.Password = cfg.Password
 		} else {
 			cc.AuthMethod = tor.AuthCookie
 		}
 		ctrl, err := tor.NewController(cc)
-		if err != nil { return controllerBundle{err: err} }
+		if err != nil {
+			return controllerBundle{err: err}
+		}
 		checker, err := proxy.NewChecker(cfg.SocksPort)
-		if err != nil { ctrl.Close(); return controllerBundle{err: err} }
+		if err != nil {
+			ctrl.Close()
+			return controllerBundle{err: err}
+		}
 		return controllerBundle{ctrl: ctrl, checker: checker}
 	}
 }
@@ -353,7 +421,11 @@ func renderLogo() string {
 	}
 	var sb strings.Builder
 	for i, line := range lines {
-		if i < 6 { sb.WriteString(StylePrimary.Render(line)) } else { sb.WriteString(StyleAccent.Render(line)) }
+		if i < 6 {
+			sb.WriteString(StylePrimary.Render(line))
+		} else {
+			sb.WriteString(StyleAccent.Render(line))
+		}
 		sb.WriteByte('\n')
 	}
 	return sb.String()

@@ -6,12 +6,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/amirk1998/tor-manager/core/tor"
+	"github.com/amirk1998/tor-manager/tor-tui/ui"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/you/tor-manager/core/tor"
-	"github.com/you/tor-tui/ui"
 )
 
 type bridgeMode int
